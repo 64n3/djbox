@@ -1,6 +1,7 @@
 #Libraries
 import RPi.GPIO as GPIO
 import time
+from pythonosc import udp_client
  
 #GPIO Mode (BOARD / BCM)
 GPIO.setmode(GPIO.BCM)
@@ -41,6 +42,7 @@ def distance():
     return distance
  
 if __name__ == '__main__':
+    client = udp_client.SimpleUDPClient("127.0.0.1", 1111)
     try:
         i = 0
         dist = [ ]
@@ -49,6 +51,7 @@ if __name__ == '__main__':
             for i in range(500):
                 dist.append( distance())
                 print ("m{}: {:.1f} cm".format(i, dist[i]))
+                client.send_message("address/", -dist[i]/100)
                 time.sleep(0.01)
                 file.write("%f\n" % dist[i])
                 
