@@ -43,23 +43,24 @@ def distance():
  
 if __name__ == '__main__':
     client = udp_client.SimpleUDPClient("127.0.0.1", 1111)
-    try:
+    bExportData = True
+    tFile = "recorded_data.txt"
+    try:  # Run and write to file
         i = 0
-        dist = [ ]
-        #while True:
-        with open("recorded_data.txt", "w") as file:
-            for i in range(500):
-                dist.append( distance())
-                print ("m{}: {:.1f} cm".format(i, dist[i]))
-                client.send_message("address/", -dist[i]/100)
-                time.sleep(0.01)
-                file.write("%f\n" % dist[i])
-                
-        print("Done after %d runs\n" % i)
-        GPIO.cleanup()
- 
-        # Reset by pressing CTRL + C
-    except KeyboardInterrupt:
+        if bExportData:
+           file = open(tFile, "w")
+        #with open("recorded_data.txt", "w") as file:
+        while True:
+           dist = distance()
+           print ("m{}: {:.1f} cm".format(i, dist))
+           client.send_message("/", dist * 10)
+           time.sleep(0.01)
+           if bExportData:
+             file.write("%f\n" % dist)
+           i += 1
+    except KeyboardInterrupt:  # Stop by pressinc CTRL+C
         print("Measurement stopped by User")
         print("Did %d runs" % i)
+        if bExportData:
+          print("Wrote {} lines to {}".format(i, tFile))
         GPIO.cleanup()
