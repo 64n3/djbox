@@ -1,0 +1,8 @@
+#N canvas 813 361 450 303 12;
+#X obj 182 81 oscparse;
+#X obj 182 106 expr $f2;
+#X obj 182 131 outlet;
+#X obj 182 56 netreceive -b -u 1111;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 3 0 0 0;
