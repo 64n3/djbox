@@ -15,7 +15,7 @@ if __name__ == '__main__':
     b, a = butter(5, w_cutoff, btype='low', analog=False)
 
     # define scenario (1: random, 2: exponential decay)
-    scen = 1
+    scen = 2
     x = []
     i = 0
     try:
