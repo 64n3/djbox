@@ -7,7 +7,8 @@ import numpy as np
 
 if __name__ == '__main__':
     t_update = 0.5  # sleep time between distance measurements
-    client = udp_client.SimpleUDPClient("127.0.0.1", 1111)  # send to port 1111 on localhost
+    client_1 = udp_client.SimpleUDPClient("127.0.0.1", 1024)  # client for port 1024
+    client_2 = udp_client.SimpleUDPClient("127.0.0.1", 1025)  # client for port 1025
 
     # define data lowpass filter
     f_cutoff = 1
@@ -15,13 +16,13 @@ if __name__ == '__main__':
     b, a = butter(5, w_cutoff, btype='low', analog=False)
 
     # define scenario (1: random, 2: exponential decay)
-    scen = 2
+    scen = 1
     x = []
     i = 0
     try:
         while True:
             if scen == 1:  # random numbers between 1000 and 2000
-                x.append(1000+random.randint(0,1000))  # generate random distance measurements
+                x.append(np.random.uniform())  # generate random distance measurements
             elif scen == 2:  # exponential decay
                 x.append(math.exp(-i/10)*1000)
                 i+=1
@@ -29,7 +30,8 @@ if __name__ == '__main__':
             y = lfilter(b, a, x)
             dist = y[-1]
 
-            client.send_message("/", dist)
+            client_1.send_message("/", dist)
+            client_2.send_message("/", 1-dist)
             print(dist)
             time.sleep(t_update)
     except KeyboardInterrupt:
