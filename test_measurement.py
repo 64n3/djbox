@@ -43,7 +43,7 @@ def distance():
  
 if __name__ == '__main__':
     client = udp_client.SimpleUDPClient("127.0.0.1", 1111)
-    bExportData = True
+    bExportData = False
     tFile = "recorded_data.txt"
     try:  # Run and write to file
         i = 0
