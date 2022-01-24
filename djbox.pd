@@ -1,0 +1,18 @@
+#N canvas 42 210 773 667 12;
+#X obj 98 12 loadbang;
+#X msg 98 37 port 1024;
+#X obj 98 62 oscfloat;
+#X floatatom 98 112 5 0 0 0 set\ t_update - - 0;
+#X obj 98 136 / 2;
+#X obj 98 161 value t_update;
+#X obj 98 87 route t_update setup_done;
+#X obj 345 137 oscfloat;
+#X msg 345 112 port 1025;
+#X connect 0 0 1 0;
+#X connect 1 0 2 0;
+#X connect 2 1 6 0;
+#X connect 3 0 4 0;
+#X connect 4 0 5 0;
+#X connect 6 0 3 0;
+#X connect 6 1 8 0;
+#X connect 8 0 7 0;
