@@ -35,7 +35,7 @@ def distmeas():
     
 
 if __name__ == '__main__':
-    ip = "192.168.178.20"
+    ip = "192.168.178.36"
     t_update = 0.1  # sleep time between distance measurements
     client_0 = udp_client.SimpleUDPClient(ip, 1024)  # setup data client
     client_1 = udp_client.SimpleUDPClient(ip, 1025)  # sensor data client 1
