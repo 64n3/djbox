@@ -7,13 +7,6 @@ from scipy.signal import butter, lfilter
 import numpy as np
 from numpy_ringbuffer import RingBuffer
 
-# set up GPIO
-GPIO.setmode(GPIO.BCM)
-GPIO_TRIGGER = 23
-GPIO.setup(GPIO_TRIGGER, GPIO.OUT)
-GPIO_ECHO = 24
-GPIO.setup(GPIO_ECHO, GPIO.IN)
-
 def calc_biquad(fc=1, fs=10, Q=1/np.sqrt(2)):
     w0 = 2 * np.pi * fc/fs
     a = np.sin(w0)/2*Q
@@ -31,7 +24,7 @@ def calc_biquad(fc=1, fs=10, Q=1/np.sqrt(2)):
     
     return vB,vA
 
-def distmeas():
+def distmeas(GPIO_TRIGGER, GPIO_ECHO):
     # trigger measurement
     GPIO.output(GPIO_TRIGGER, True)
     time.sleep(0.00001)
@@ -52,8 +45,15 @@ def distmeas():
     
 
 if __name__ == '__main__':
+    # GPIO setup
+    GPIO.setmode(GPIO.BCM)
+    GPIO_TRIGGER_1 = 23
+    GPIO.setup(GPIO_TRIGGER_1, GPIO.OUT)
+    GPIO_ECHO_1 = 24
+    GPIO.setup(GPIO_ECHO_1, GPIO.IN)
     
-    ip = "192.168.178.36"
+    # Network/Communication setup
+    ip = "192.168.178.20"
     fs_read = 100  # sampling frequency in Hz for sensors and smoothing
     t_read = 1/fs_read
     
@@ -62,58 +62,52 @@ if __name__ == '__main__':
     c_setup = udp_client.SimpleUDPClient(ip, 1024)  # setup data client
     c_trigger = udp_client.SimpleUDPClient(ip, 1025)  # sensor data client 1
     
-    # patch setup
+    # Patch setup
     t_update = 1.5  # interpolation time between trigger events in s
     f_min = 1000  # minimum frequency for lowpass filter in Hz
     max_attn = -60  # maximum attenuation in dB
     a_min = np.power(10, max_attn/20)  # minimum amplitude (linear)
     
-    # send setup to Pd
     c_setup.send_message("/t_update",t_update)
     c_setup.send_message("/f_min",f_min)
     c_setup.send_message("/a_min",a_min)
     c_setup.send_message("/setup_done",1)
     
-    # limits
-    max_dist = 400  # mm
-    min_dist = 20  # mm
-    dist_range = max_dist-min_dist  # mm
+    # Limits
+    trig_dist = 500  # trigger distance in mm
     
-    # ringbuffer to store measurements
-    xR = RingBuffer(capacity=3)
-    yR = RingBuffer(capacity=3)
+    # Ringbuffers to store measurements
+    xR1 = RingBuffer(capacity=3)
+    yR1 = RingBuffer(capacity=3)
     
     for i in range(3):  # initialize ringbuffer with zeros
-        xR.append(0)
-        yR.append(0)
+        xR1.append(0)
+        yR1.append(0)
     # Biquad coefficients
-    vB, vA = calc_biquad(fc=1, fs=1/t_update);
+    vB, vA = calc_biquad(fc=1, fs=fs_read);
     
     # define scenario (1: random, 2: exponential decay)
     scen = 0
     i = 0
     try:
+        trigger = 0
         while True:
-            if scen == 0:  # use sensors for measurement
-                xR.appendleft(distmeas())
-            elif scen == 1:  # random numbers between 1000 and 2000
-                xR.appendleft(np.random.uniform())  # generate random distance measurements
-            elif scen == 2:  # exponential decay
-                xR.appendleft(math.exp(-i/10)*1000)
-                i+=1
+            xR1.appendleft(distmeas(GPIO_TRIGGER_1, GPIO_ECHO_1))
             
-            y = vB[0] * xR[0] + vB[1] * xR[1] + vB[2] * xR[2] - vA[1] * yR[0] - vA[2] * yR[1]
-            yR.appendleft(y)
+            y1 = vB[0] * xR1[0] + vB[1] * xR1[1] + vB[2] * xR1[2] - vA[1] * yR1[0] - vA[2] * yR1[1]
+            yR1.appendleft(y1)
             
-            # normalize data
-            if y > max_dist: y = max_dist
-            if y < min_dist: y = min_dist
-            y = y / dist_range
-            
-            # send data via OSC
-            client_1.send_message("/", y)
-            client_2.send_message("/", 1-y)
-            time.sleep(t_update)
+            # detect trigger 
+            if y1 > trig_dist and trigger != 0:
+                trigger = 0
+                c_trigger.send_message("/", trigger)
+            elif y1 <= trig_dist and trigger != 1:
+                trigger = 1
+                c_trigger.send_message("/", trigger)
+            else:
+                time.sleep(t_read)
+                
+            print("{}mm --> t={}".format(y1,trigger))
     except KeyboardInterrupt:
         GPIO.cleanup()
         print("Done\n")
