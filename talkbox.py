@@ -46,14 +46,24 @@ def distmeas(GPIO_TRIGGER, GPIO_ECHO):
 
 if __name__ == '__main__':
     # GPIO setup
+    print("DBG:setup sensors")
     GPIO.setmode(GPIO.BCM)
-    GPIO_TRIGGER_1 = 23
+    GPIO_TRIGGER_1 = 17
     GPIO.setup(GPIO_TRIGGER_1, GPIO.OUT)
-    GPIO_ECHO_1 = 24
+    GPIO_TRIGGER_2 = 27
+    GPIO.setup(GPIO_TRIGGER_2, GPIO.OUT)
+    GPIO_TRIGGER_3 = 22
+    GPIO.setup(GPIO_TRIGGER_3, GPIO.OUT)
+    GPIO_ECHO_1 = 16
     GPIO.setup(GPIO_ECHO_1, GPIO.IN)
+    GPIO_ECHO_2 = 20
+    GPIO.setup(GPIO_ECHO_2, GPIO.IN)
+    GPIO_ECHO_3 = 21
+    GPIO.setup(GPIO_ECHO_3, GPIO.IN)
     
     # Network/Communication setup
-    ip = "192.168.178.20"
+    print("DBG:setup network")
+    ip = "192.168.178.36"
     fs_read = 100  # sampling frequency in Hz for sensors and smoothing
     t_read = 1/fs_read
     
@@ -63,6 +73,7 @@ if __name__ == '__main__':
     c_trigger = udp_client.SimpleUDPClient(ip, 1025)  # sensor data client 1
     
     # Patch setup
+    print("DBG:setup patch")
     t_update = 1.5  # interpolation time between trigger events in s
     f_min = 1000  # minimum frequency for lowpass filter in Hz
     max_attn = -60  # maximum attenuation in dB
@@ -77,12 +88,23 @@ if __name__ == '__main__':
     trig_dist = 500  # trigger distance in mm
     
     # Ringbuffers to store measurements
-    xR1 = RingBuffer(capacity=3)
-    yR1 = RingBuffer(capacity=3)
+    print("DBG:setup ringbuffers")
+    n_buff = 3
+    xR1 = RingBuffer(capacity=n_buff)
+    xR2 = RingBuffer(capacity=n_buff)
+    xR3 = RingBuffer(capacity=n_buff)
+    yR1 = RingBuffer(capacity=n_buff)
+    yR2 = RingBuffer(capacity=n_buff)
+    yR3 = RingBuffer(capacity=n_buff)
     
     for i in range(3):  # initialize ringbuffer with zeros
         xR1.append(0)
+        xR2.append(0)
+        xR3.append(0)
         yR1.append(0)
+        yR2.append(0)
+        yR3.append(0)
+        
     # Biquad coefficients
     vB, vA = calc_biquad(fc=1, fs=fs_read);
     
@@ -93,21 +115,32 @@ if __name__ == '__main__':
         trigger = 0
         while True:
             xR1.appendleft(distmeas(GPIO_TRIGGER_1, GPIO_ECHO_1))
+            xR2.appendleft(distmeas(GPIO_TRIGGER_2, GPIO_ECHO_2))
+            xR3.appendleft(distmeas(GPIO_TRIGGER_3, GPIO_ECHO_3))
             
             y1 = vB[0] * xR1[0] + vB[1] * xR1[1] + vB[2] * xR1[2] - vA[1] * yR1[0] - vA[2] * yR1[1]
-            yR1.appendleft(y1)
+            y2 = vB[0] * xR2[0] + vB[1] * xR2[1] + vB[2] * xR2[2] - vA[1] * yR2[0] - vA[2] * yR2[1]
+            y3 = vB[0] * xR3[0] + vB[1] * xR3[1] + vB[2] * xR3[2] - vA[1] * yR3[0] - vA[2] * yR3[1]
             
-            # detect trigger 
-            if y1 > trig_dist and trigger != 0:
-                trigger = 0
-                c_trigger.send_message("/", trigger)
-            elif y1 <= trig_dist and trigger != 1:
-                trigger = 1
-                c_trigger.send_message("/", trigger)
-            else:
-                time.sleep(t_read)
-                
-            print("{}mm --> t={}".format(y1,trigger))
+            yR1.appendleft(y1)
+            yR2.appendleft(y2)
+            yR3.appendleft(y3)
+            
+            print("{} | {} | {}".format(y1, y2, y3))
+            
+#             # detect trigger 
+#             if y1 > trig_dist and trigger != 0:
+#                 trigger = 0
+#                 c_trigger.send_message("/", trigger)
+#             elif y1 <= trig_dist and trigger != 1:
+#                 trigger = 1
+#                 c_trigger.send_message("/", trigger)
+#             else:
+#                 time.sleep(t_read)
+#                 
+#             print("{}mm --> t={}".format(y1,trigger))
+
+
     except KeyboardInterrupt:
         GPIO.cleanup()
         print("Done\n")
