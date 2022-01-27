@@ -48,17 +48,17 @@ if __name__ == '__main__':
     # GPIO setup
     print("DBG:setup sensors")
     GPIO.setmode(GPIO.BCM)
-    GPIO_TRIGGER_1 = 17
+    GPIO_TRIGGER_1 = 22
     GPIO.setup(GPIO_TRIGGER_1, GPIO.OUT)
     GPIO_TRIGGER_2 = 27
     GPIO.setup(GPIO_TRIGGER_2, GPIO.OUT)
-    GPIO_TRIGGER_3 = 22
+    GPIO_TRIGGER_3 = 17
     GPIO.setup(GPIO_TRIGGER_3, GPIO.OUT)
-    GPIO_ECHO_1 = 16
+    GPIO_ECHO_1 = 21
     GPIO.setup(GPIO_ECHO_1, GPIO.IN)
     GPIO_ECHO_2 = 20
     GPIO.setup(GPIO_ECHO_2, GPIO.IN)
-    GPIO_ECHO_3 = 21
+    GPIO_ECHO_3 = 16
     GPIO.setup(GPIO_ECHO_3, GPIO.IN)
     
     # Network/Communication setup
@@ -75,6 +75,7 @@ if __name__ == '__main__':
     # Patch setup
     print("DBG:setup patch")
     t_update = 1.5  # interpolation time between trigger events in s
+    send_comp = t_update/t_read  # compensation between reading and updating
     f_min = 1000  # minimum frequency for lowpass filter in Hz
     max_attn = -60  # maximum attenuation in dB
     a_min = np.power(10, max_attn/20)  # minimum amplitude (linear)
@@ -113,6 +114,8 @@ if __name__ == '__main__':
     i = 0
     try:
         trigger = 0
+        i_read = 0  # counter for read cycles, before send event
+        T = [0,0,0]
         while True:
             xR1.appendleft(distmeas(GPIO_TRIGGER_1, GPIO_ECHO_1))
             xR2.appendleft(distmeas(GPIO_TRIGGER_2, GPIO_ECHO_2))
@@ -126,7 +129,21 @@ if __name__ == '__main__':
             yR2.appendleft(y2)
             yR3.appendleft(y3)
             
-            print("{} | {} | {}".format(y1, y2, y3))
+            # evaluate distances and trigger value
+            Y = [y1, y2, y3]
+            for ii in range(len(Y)):
+                T[ii] = int(Y[ii] < trig_dist)
+            trigger = sum(T)-1
+            if trigger < 0: trigger = 0
+            
+            i_read += 1
+            if i_read == send_comp:
+                c_trigger.send_message("/", trigger)
+                i_read = 0
+            
+            
+#             print("{} | {} | {}".format(y1, y2, y3))
+#             print("{} | {} | {} --> {}".format(T[0],T[1],T[2], trigger))
             
 #             # detect trigger 
 #             if y1 > trig_dist and trigger != 0:
