@@ -79,10 +79,20 @@ if __name__ == '__main__':
     f_min = 1000  # minimum frequency for lowpass filter in Hz
     max_attn = -60  # maximum attenuation in dB
     a_min = np.power(10, max_attn/20)  # minimum amplitude (linear)
+    f_low = 300  # center frequency of low shelf filter
+    g_low = -3  # gain of low shelf filter
+    g_mid = -10  # gain of mit hml filter
+    f_high = 2000  # center frequency of high shelf filter
+    g_high = -8  # gain of high shelf filter
     
     c_setup.send_message("/t_update",t_update)
     c_setup.send_message("/f_min",f_min)
     c_setup.send_message("/a_min",a_min)
+    c_setup.send_message("/f_low",f_low)
+    c_setup.send_message("/g_low",g_low)
+    c_setup.send_message("/g_mid",g_mid)
+    c_setup.send_message("/f_high",f_high)
+    c_setup.send_message("/g_high",g_high)
     c_setup.send_message("/setup_done",1)
     
     # Limits
